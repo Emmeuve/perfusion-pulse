@@ -7,6 +7,10 @@ import PediatricCPBCalculations from "@/components/perfusion/PediatricCPBCalcula
 import ECMOCalculations from "@/components/perfusion/ECMOCalculations";
 import PatientManager from "@/components/patient/PatientManager";
 import { PatientWithCalculations } from "@/types/Patient";
+import ConversionesCard from "@/components/perfusion/ConversionesCard";
+import SolucionesCard from "@/components/perfusion/SolucionesCard";
+import CorreccionELPCard from "@/components/perfusion/CorreccionELPCard";
+
 
 const Index = () => {
   const [activeCard, setActiveCard] = useState<number | null>(null);
@@ -43,10 +47,11 @@ const Index = () => {
     {
       id: 4,
       title: "Corrección de ELP",
-      description: "Correcciones de electrolitos, líquidos y proteínas",
+      description: "Fórmulas para potasio y bicarbonato con conversión mEq ↔ mg.",
       icon: FlaskConical,
       color: "medical-primary",
-      component: null
+      component: CorreccionELPCard,
+      requiresPatient: false
     },
     {
       id: 5,
@@ -65,12 +70,12 @@ const Index = () => {
       component: null
     },
     {
-      id: 7,
-      title: "Conversiones",
-      description: "Conversiones de unidades médicas y farmacológicas",
-      icon: Activity,
-      color: "medical-primary",
-      component: null
+    id: 7,
+    title: "Conversiones",
+    description: "Equivalencias mg↔µg, cm↔in, in↔Fr, mEq↔mg.",
+    icon: Calculator,
+    component: ConversionesCard,   // 👈 esto habilita el botón y permite montarlo al hacer click
+    requiresPatient: false
     },
     {
       id: 8,
@@ -83,23 +88,38 @@ const Index = () => {
     {
       id: 9,
       title: "Soluciones",
-      description: "Composiciones de soluciones y fórmulas de cardioplejía",
+      description: "Composición: SF 0,9%, RL, Ringer USP, Plasma‑Lyte A y recetas de cardioplegia.",
       icon: Database,
-      color: "medical-primary",
-      component: null
-    }
+      component: SolucionesCard,
+      requiresPatient: false
+    },
   ];
 
+/*************  ✨ Windsurf Command 🌟  *************/
+  /**
+   * Handles the click event on a card.
+   * If the card requires a patient, it shows the patient manager.
+   * Otherwise, it sets the active card.
+   * 
+   * @param {number} cardId - The ID of the card that was clicked.
+   */
   const handleCardClick = (cardId: number) => {
+    // Find the card with the given ID
     const card = perfusionCards.find(c => c.id === cardId);
+
+    // If the card exists and has a component
     if (card?.component) {
+      // If the card requires a patient
       if (card.requiresPatient) {
+        // Show the patient manager
         setShowPatientManager(true);
       } else {
+        // Set the active card
         setActiveCard(cardId);
       }
     }
   };
+/*******  9cc2b583-ec9c-48f3-8599-fa7e938c32c2  *******/
 
   const handleNavigateToCalculation = (type: 'cec-adulto' | 'cec-pediatrico', patient?: PatientWithCalculations) => {
     setSelectedPatient(patient);
