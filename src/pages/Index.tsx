@@ -10,7 +10,7 @@ import { PatientWithCalculations } from "@/types/Patient";
 import ConversionesCard from "@/components/perfusion/ConversionesCard";
 import SolucionesCard from "@/components/perfusion/SolucionesCard";
 import CorreccionELPCard from "@/components/perfusion/CorreccionELPCard";
-
+import SupabasePing from "../components/perfusion/SupabasePing";
 
 const Index = () => {
   const [activeCard, setActiveCard] = useState<number | null>(null);
