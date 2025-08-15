@@ -2,39 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Medical-grade design system for perfusion calculations 
+All colors MUST be HSL for optimal clinical interface
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Medical background - clean white for readability */
+    --background: 0 0% 99%;
+    --foreground: 210 11% 15%;
 
+    /* Card system - professional medical interface */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 210 11% 15%;
+    --card-border: 210 20% 90%;
+    --card-shadow: 210 20% 85%;
 
+    /* Medical blue theme - professional and trustworthy */
+    --medical-primary: 210 100% 45%;
+    --medical-primary-light: 210 100% 92%;
+    --medical-primary-dark: 210 100% 35%;
+    
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 210 11% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 210 100% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Professional secondary colors */
+    --secondary: 210 17% 95%;
+    --secondary-foreground: 210 11% 15%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted colors for less important information */
+    --muted: 210 17% 96%;
+    --muted-foreground: 210 6% 50%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent for highlights and important elements */
+    --accent: 210 17% 95%;
+    --accent-foreground: 210 11% 15%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Medical alert colors */
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 95% 50%;
+    --warning-foreground: 0 0% 100%;
+    --success: 142 72% 29%;
+    --success-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Form elements */
+    --border: 210 20% 88%;
+    --input: 0 0% 100%;
+    --input-border: 210 20% 85%;
+    --ring: 210 100% 45%;
 
     --radius: 0.5rem;
 
