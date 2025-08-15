@@ -4,52 +4,83 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Calculator, FileText, Save } from 'lucide-react';
 import { usePatients } from '@/hooks/usePatients';
 import { PatientWithCalculations } from '@/types/Patient';
 
-interface AdultCPBCalculationsProps {
+interface PediatricCPBCalculationsProps {
   selectedPatient?: PatientWithCalculations;
 }
 
-const AdultCPBCalculations = ({ selectedPatient }: AdultCPBCalculationsProps) => {
+const PediatricCPBCalculations = ({ selectedPatient }: PediatricCPBCalculationsProps) => {
   const { addCalculation } = usePatients();
   
   // Input states
   const [weight, setWeight] = useState<number>(0);
   const [height, setHeight] = useState<number>(0);
+  const [age, setAge] = useState<number>(0);
+  const [ageUnit, setAgeUnit] = useState<'months' | 'years'>('months');
   const [currentHematocrit, setCurrentHematocrit] = useState<number>(0);
   const [desiredHematocrit, setDesiredHematocrit] = useState<number>(25);
   const [primingVolume, setPrimingVolume] = useState<number>(0);
-  const [bloodVolumeMethod, setBloodVolumeMethod] = useState<string>('nadler');
-  const [cardiacIndex, setCardiacIndex] = useState<number>(2.2);
+  const [bloodVolumeMethod, setBloodVolumeMethod] = useState<string>('pediatric-age-based');
+  const [cardiacIndex, setCardiacIndex] = useState<number>(3.0);
 
   // Load patient data if provided
   useEffect(() => {
     if (selectedPatient) {
-      // Could pre-fill some data if needed
+      setAge(selectedPatient.age);
+      setAgeUnit(selectedPatient.age < 2 ? 'months' : 'years');
     }
   }, [selectedPatient]);
+
+  // Age-specific calculations
+  const getAgeCategory = () => {
+    const ageInMonths = ageUnit === 'years' ? age * 12 : age;
+    if (ageInMonths < 1) return 'neonate';
+    if (ageInMonths < 12) return 'infant';
+    return 'child';
+  };
+
+  const getCardiacIndexRange = () => {
+    const category = getAgeCategory();
+    switch (category) {
+      case 'neonate': return { min: 3.0, max: 3.5, default: 3.2 };
+      case 'infant': return { min: 2.5, max: 3.0, default: 2.8 };
+      case 'child': return { min: 2.2, max: 2.8, default: 2.5 };
+      default: return { min: 2.5, max: 3.0, default: 2.8 };
+    }
+  };
 
   // Calculations
   const calculateBSA = () => {
     if (weight <= 0 || height <= 0) return 0;
-    // DuBois formula: BSA = 0.007184 × weight^0.425 × height^0.725
-    return 0.007184 * Math.pow(weight, 0.425) * Math.pow(height, 0.725);
+    return Math.sqrt((height * weight) / 3600);
   };
 
   const calculateBloodVolume = () => {
-    if (weight <= 0 || height <= 0) return 0;
+    if (weight <= 0) return 0;
     
-    if (bloodVolumeMethod === 'nadler') {
-      // Nadler formula - assume male for simplicity, could be enhanced
-      return (0.3669 * Math.pow(height / 100, 3)) + (0.03219 * weight) + 0.6041;
-    } else if (bloodVolumeMethod === 'simplified') {
-      // Simplified formula: 70 mL/kg for adults
-      return weight * 0.07;
+    const category = getAgeCategory();
+    let volumePerKg: number;
+    
+    switch (category) {
+      case 'neonate':
+        volumePerKg = 85; // 85 mL/kg for neonates
+        break;
+      case 'infant':
+        volumePerKg = 80; // 80 mL/kg for infants
+        break;
+      case 'child':
+        volumePerKg = 75; // 75 mL/kg for children
+        break;
+      default:
+        volumePerKg = 80;
     }
-    return weight * 0.07; // Default fallback
+    
+    return weight * volumePerKg;
   };
 
   const calculatePumpFlow = () => {
@@ -64,16 +95,16 @@ const AdultCPBCalculations = ({ selectedPatient }: AdultCPBCalculationsProps) =>
     const totalBloodVolume = calculateBloodVolume();
     if (totalBloodVolume <= 0) return currentHematocrit;
     
-    const dilutedVolume = totalBloodVolume + (primingVolume / 1000);
+    const dilutedVolume = totalBloodVolume + primingVolume;
     return (currentHematocrit * totalBloodVolume) / dilutedVolume;
   };
 
   const calculateCerebralFlow = () => {
-    return calculatePumpFlow() * 0.1; // 10% of total flow
+    return calculatePumpFlow() * 0.15; // 15% for pediatric patients
   };
 
   const calculateCardiacFlow = () => {
-    return calculatePumpFlow(); // Same as pump flow
+    return calculatePumpFlow() * 0.05; // 5% for cardiac perfusion
   };
 
   const handleSaveCalculation = () => {
@@ -84,7 +115,7 @@ const AdultCPBCalculations = ({ selectedPatient }: AdultCPBCalculationsProps) =>
 
     const calculation = {
       patientId: selectedPatient.id,
-      type: 'cec-adulto' as const,
+      type: 'cec-pediatrico' as const,
       inputs: {
         weight,
         height,
@@ -114,6 +145,8 @@ const AdultCPBCalculations = ({ selectedPatient }: AdultCPBCalculationsProps) =>
   const dilutionalHematocrit = calculateDilutionalHematocrit();
   const cerebralFlow = calculateCerebralFlow();
   const cardiacFlow = calculateCardiacFlow();
+  const ageCategory = getAgeCategory();
+  const cardiacIndexRange = getCardiacIndexRange();
 
   return (
     <div className="space-y-6">
@@ -166,7 +199,7 @@ const AdultCPBCalculations = ({ selectedPatient }: AdultCPBCalculationsProps) =>
                     min="0"
                     value={weight || ''}
                     onChange={(e) => setWeight(parseFloat(e.target.value) || 0)}
-                    placeholder="70.0"
+                    placeholder="0.0"
                   />
                 </div>
                 <div className="space-y-2">
@@ -178,8 +211,45 @@ const AdultCPBCalculations = ({ selectedPatient }: AdultCPBCalculationsProps) =>
                     min="0"
                     value={height || ''}
                     onChange={(e) => setHeight(parseFloat(e.target.value) || 0)}
-                    placeholder="170.0"
+                    placeholder="0.0"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="age">Edad</Label>
+                  <Input
+                    id="age"
+                    type="number"
+                    min="0"
+                    value={age || ''}
+                    onChange={(e) => setAge(parseFloat(e.target.value) || 0)}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ageUnit">Unidad</Label>
+                  <Select value={ageUnit} onValueChange={(value: 'months' | 'years') => setAgeUnit(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="months">Meses</SelectItem>
+                      <SelectItem value="years">Años</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label>Categoría de Edad:</Label>
+                  <Badge variant={ageCategory === 'neonate' ? 'destructive' : ageCategory === 'infant' ? 'default' : 'secondary'}>
+                    {ageCategory === 'neonate' ? 'Neonato (<1 mes)' : 
+                     ageCategory === 'infant' ? 'Lactante (1-12 meses)' : 
+                     'Niño (>1 año)'}
+                  </Badge>
                 </div>
               </div>
 
@@ -196,7 +266,7 @@ const AdultCPBCalculations = ({ selectedPatient }: AdultCPBCalculationsProps) =>
                     max="100"
                     value={currentHematocrit || ''}
                     onChange={(e) => setCurrentHematocrit(parseFloat(e.target.value) || 0)}
-                    placeholder="40.0"
+                    placeholder="0.0"
                   />
                 </div>
                 <div className="space-y-2">
@@ -223,38 +293,27 @@ const AdultCPBCalculations = ({ selectedPatient }: AdultCPBCalculationsProps) =>
                   min="0"
                   value={primingVolume || ''}
                   onChange={(e) => setPrimingVolume(parseFloat(e.target.value) || 0)}
-                  placeholder="1200"
+                  placeholder="0"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="bloodVolumeMethod">Método de Volumen Sanguíneo</Label>
-                <Select value={bloodVolumeMethod} onValueChange={setBloodVolumeMethod}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="nadler">Fórmula de Nadler</SelectItem>
-                    <SelectItem value="simplified">Fórmula Simplificada (70 mL/kg)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cardiacIndex">Índice Cardíaco (L/min/m²)</Label>
-                <Select 
-                  value={cardiacIndex.toString()} 
-                  onValueChange={(value) => setCardiacIndex(parseFloat(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2.0">Bajo flujo (2.0)</SelectItem>
-                    <SelectItem value="2.2">Estándar (2.2)</SelectItem>
-                    <SelectItem value="2.4">Alto flujo (2.4)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="cardiacIndex">
+                  Índice Cardíaco (L/min/m²)
+                  <span className="text-sm text-muted-foreground ml-2">
+                    Rango: {cardiacIndexRange.min} - {cardiacIndexRange.max}
+                  </span>
+                </Label>
+                <Input
+                  id="cardiacIndex"
+                  type="number"
+                  step="0.1"
+                  min={cardiacIndexRange.min}
+                  max={cardiacIndexRange.max}
+                  value={cardiacIndex || ''}
+                  onChange={(e) => setCardiacIndex(parseFloat(e.target.value) || cardiacIndexRange.default)}
+                  placeholder={cardiacIndexRange.default.toString()}
+                />
               </div>
             </CardContent>
           </Card>
@@ -274,7 +333,7 @@ const AdultCPBCalculations = ({ selectedPatient }: AdultCPBCalculationsProps) =>
                 </div>
                 <div className="p-3 bg-muted rounded-lg">
                   <div className="text-sm font-medium text-muted-foreground">Volumen Sanguíneo Total</div>
-                  <div className="text-lg font-semibold">{totalBloodVolume.toFixed(2)} L</div>
+                  <div className="text-lg font-semibold">{totalBloodVolume.toFixed(0)} mL</div>
                 </div>
               </div>
 
@@ -315,19 +374,36 @@ const AdultCPBCalculations = ({ selectedPatient }: AdultCPBCalculationsProps) =>
             </CardContent>
           </Card>
 
-          {/* Clinical Notes */}
+          {/* Age-specific Notes */}
           <Card>
             <CardHeader>
-              <CardTitle>Notas Clínicas</CardTitle>
+              <CardTitle>Notas Pediátricas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="font-medium text-blue-800">Consideraciones para CEC adulto:</p>
+                <p className="font-medium text-blue-800">Consideraciones por edad:</p>
                 <ul className="mt-2 space-y-1 text-blue-700">
-                  <li>• Flujo recomendado: 2.2-2.4 L/min/m²</li>
-                  <li>• Hematocrito objetivo: 20-25%</li>
-                  <li>• Presión de perfusión: 50-80 mmHg</li>
-                  <li>• Temperatura: 28-32°C para hipotermia moderada</li>
+                  {ageCategory === 'neonate' && (
+                    <>
+                      <li>• Volumen sanguíneo: 85 mL/kg</li>
+                      <li>• Índice cardíaco: 3.0-3.5 L/min/m²</li>
+                      <li>• Flujo cerebral: 15% del gasto cardíaco</li>
+                    </>
+                  )}
+                  {ageCategory === 'infant' && (
+                    <>
+                      <li>• Volumen sanguíneo: 80 mL/kg</li>
+                      <li>• Índice cardíaco: 2.5-3.0 L/min/m²</li>
+                      <li>• Flujo cerebral: 15% del gasto cardíaco</li>
+                    </>
+                  )}
+                  {ageCategory === 'child' && (
+                    <>
+                      <li>• Volumen sanguíneo: 75 mL/kg</li>
+                      <li>• Índice cardíaco: 2.2-2.8 L/min/m²</li>
+                      <li>• Flujo cerebral: 15% del gasto cardíaco</li>
+                    </>
+                  )}
                 </ul>
               </div>
             </CardContent>
@@ -338,4 +414,4 @@ const AdultCPBCalculations = ({ selectedPatient }: AdultCPBCalculationsProps) =>
   );
 };
 
-export default AdultCPBCalculations;
+export default PediatricCPBCalculations;

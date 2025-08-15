@@ -3,10 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Calculator, Heart, Activity, Database, Baby, Stethoscope, BarChart3, FlaskConical, Droplet } from "lucide-react";
 import { useState } from "react";
 import AdultCPBCalculations from "@/components/perfusion/AdultCPBCalculations";
+import PediatricCPBCalculations from "@/components/perfusion/PediatricCPBCalculations";
 import ECMOCalculations from "@/components/perfusion/ECMOCalculations";
+import PatientManager from "@/components/patient/PatientManager";
+import { PatientWithCalculations } from "@/types/Patient";
 
 const Index = () => {
   const [activeCard, setActiveCard] = useState<number | null>(null);
+  const [showPatientManager, setShowPatientManager] = useState<boolean>(false);
+  const [selectedPatient, setSelectedPatient] = useState<PatientWithCalculations | undefined>(undefined);
 
   const perfusionCards = [
     {
@@ -15,7 +20,8 @@ const Index = () => {
       description: "Cálculos de circulación extracorpórea para pacientes adultos",
       icon: Calculator,
       color: "medical-primary",
-      component: AdultCPBCalculations
+      component: AdultCPBCalculations,
+      requiresPatient: true
     },
     {
       id: 2,
@@ -23,7 +29,8 @@ const Index = () => {
       description: "Cálculos específicos para circulación extracorpórea pediátrica",
       icon: Baby,
       color: "medical-primary",
-      component: null
+      component: PediatricCPBCalculations,
+      requiresPatient: true
     },
     {
       id: 3,
@@ -86,12 +93,25 @@ const Index = () => {
   const handleCardClick = (cardId: number) => {
     const card = perfusionCards.find(c => c.id === cardId);
     if (card?.component) {
-      setActiveCard(cardId);
+      if (card.requiresPatient) {
+        setShowPatientManager(true);
+      } else {
+        setActiveCard(cardId);
+      }
     }
+  };
+
+  const handleNavigateToCalculation = (type: 'cec-adulto' | 'cec-pediatrico', patient?: PatientWithCalculations) => {
+    setSelectedPatient(patient);
+    const cardId = type === 'cec-adulto' ? 1 : 2;
+    setActiveCard(cardId);
+    setShowPatientManager(false);
   };
 
   const handleBack = () => {
     setActiveCard(null);
+    setShowPatientManager(false);
+    setSelectedPatient(undefined);
   };
 
   if (activeCard) {
@@ -112,13 +132,33 @@ const Index = () => {
               <h1 className="text-3xl font-bold text-foreground mb-2">{card.title}</h1>
               <p className="text-muted-foreground">{card.description}</p>
             </div>
-            <Component />
+            <Component selectedPatient={selectedPatient} />
           </div>
         </div>
       );
     }
   }
+  // Show patient manager
+  if (showPatientManager) {
+    return (
+      <div className="min-h-screen bg-background p-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="mb-6">
+            <Button 
+              variant="outline" 
+              onClick={handleBack}
+              className="mb-4"
+            >
+              ← Volver al menú principal
+            </Button>
+          </div>
+          <PatientManager onNavigateToCalculation={handleNavigateToCalculation} />
+        </div>
+      </div>
+    );
+  }
 
+  // Show calculation component
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-7xl mx-auto">
@@ -166,7 +206,7 @@ const Index = () => {
                       className="w-full"
                       disabled={!card.component}
                     >
-                      {card.component ? "Abrir módulo" : "Próximamente"}
+                      {card.component ? (card.requiresPatient ? "Gestionar pacientes" : "Abrir módulo") : "Próximamente"}
                     </Button>
                   </div>
                 </CardContent>
