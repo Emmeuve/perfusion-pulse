@@ -95,31 +95,16 @@ const Index = () => {
     },
   ];
 
-/*************  ✨ Windsurf Command 🌟  *************/
-  /**
-   * Handles the click event on a card.
-   * If the card requires a patient, it shows the patient manager.
-   * Otherwise, it sets the active card.
-   * 
-   * @param {number} cardId - The ID of the card that was clicked.
-   */
   const handleCardClick = (cardId: number) => {
-    // Find the card with the given ID
     const card = perfusionCards.find(c => c.id === cardId);
-
-    // If the card exists and has a component
     if (card?.component) {
-      // If the card requires a patient
       if (card.requiresPatient) {
-        // Show the patient manager
         setShowPatientManager(true);
       } else {
-        // Set the active card
         setActiveCard(cardId);
       }
     }
   };
-/*******  9cc2b583-ec9c-48f3-8599-fa7e938c32c2  *******/
 
   const handleNavigateToCalculation = (type: 'cec-adulto' | 'cec-pediatrico', patient?: PatientWithCalculations) => {
     setSelectedPatient(patient);
