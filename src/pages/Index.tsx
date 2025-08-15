@@ -11,73 +11,73 @@ const Index = () => {
   const perfusionCards = [
     {
       id: 1,
-      title: "Adult CPB Calculations",
-      description: "Comprehensive cardiopulmonary bypass calculations for adult patients",
+      title: "CEC Adulto",
+      description: "Cálculos de circulación extracorpórea para pacientes adultos",
       icon: Calculator,
       color: "medical-primary",
       component: AdultCPBCalculations
     },
     {
       id: 2,
-      title: "Adult Cannulation Guide",
-      description: "Cannula selection and sizing recommendations for adult CPB",
-      icon: Heart,
-      color: "medical-primary",
-      component: null
-    },
-    {
-      id: 3,
-      title: "Gas Exchange & Oxygen Delivery",
-      description: "DO2, VO2, and oxygen content calculations",
-      icon: Activity,
-      color: "medical-primary",
-      component: null
-    },
-    {
-      id: 4,
-      title: "Adult Oxygenator Database",
-      description: "Comprehensive oxygenator specifications for Chilean market",
-      icon: Database,
-      color: "medical-primary",
-      component: null
-    },
-    {
-      id: 5,
-      title: "Pediatric CPB Calculations",
-      description: "Age-specific calculations for pediatric cardiopulmonary bypass",
+      title: "CEC Pediátrica",
+      description: "Cálculos específicos para circulación extracorpórea pediátrica",
       icon: Baby,
       color: "medical-primary",
       component: null
     },
     {
-      id: 6,
-      title: "ECMO Calculations & Management",
-      description: "ECMO flow calculations, priming protocols, and mobile transport",
+      id: 3,
+      title: "ECMO",
+      description: "Cálculos de flujo ECMO, protocolos de cebado y transporte móvil",
       icon: Stethoscope,
       color: "medical-primary",
       component: ECMOCalculations
     },
     {
-      id: 7,
-      title: "Z-Values & Reference Tables",
-      description: "Z-valve references, volumes, and cannula flow tables",
-      icon: BarChart3,
-      color: "medical-primary",
-      component: null
-    },
-    {
-      id: 8,
-      title: "Laboratory Corrections",
-      description: "ELP corrections, normal values, and unit conversions",
+      id: 4,
+      title: "Corrección de ELP",
+      description: "Correcciones de electrolitos, líquidos y proteínas",
       icon: FlaskConical,
       color: "medical-primary",
       component: null
     },
     {
-      id: 9,
-      title: "Solutions & Cardioplegia",
-      description: "Solution compositions and cardioplegia formulations",
+      id: 5,
+      title: "Valores normales",
+      description: "Rangos de referencia específicos por edad",
+      icon: BarChart3,
+      color: "medical-primary",
+      component: null
+    },
+    {
+      id: 6,
+      title: "Dosis de medicamentos",
+      description: "Dosificación de medicamentos relevantes en perfusión",
       icon: Droplet,
+      color: "medical-primary",
+      component: null
+    },
+    {
+      id: 7,
+      title: "Conversiones",
+      description: "Conversiones de unidades médicas y farmacológicas",
+      icon: Activity,
+      color: "medical-primary",
+      component: null
+    },
+    {
+      id: 8,
+      title: "Valores hemodinámicos",
+      description: "Parámetros hemodinámicos y cardiovasculares de referencia",
+      icon: Heart,
+      color: "medical-primary",
+      component: null
+    },
+    {
+      id: 9,
+      title: "Soluciones",
+      description: "Composiciones de soluciones y fórmulas de cardioplejía",
+      icon: Database,
       color: "medical-primary",
       component: null
     }
