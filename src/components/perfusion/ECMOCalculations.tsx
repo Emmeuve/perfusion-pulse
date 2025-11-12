@@ -7,14 +7,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Stethoscope, Plane, AlertTriangle, Clock } from "lucide-react";
+import { Stethoscope, Plane, AlertTriangle, Clock, AlertCircle } from "lucide-react";
+
+// Importar funciones de cálculo centralizadas
+import * as calculations from '@/services/calculations';
+import type { ECMOCalculationInput, ECMOCalculationResult, ECMOMobileChecklist, ECMOMobileTimelineEvent, ECMOMobileEventType } from '@/types';
 
 const ECMOCalculations = () => {
+  // Patient Data
   const [patientData, setPatientData] = useState({
     weight: "",
     height: "",
     age: "",
-    ecmoType: "",
+    ecmoType: "VA" as 'VA' | 'VV' | 'VAV',
     currentHct: "",
     desiredHct: "",
     name: "",
@@ -24,6 +29,7 @@ const ECMOCalculations = () => {
     receivingHospital: ""
   });
 
+  // Transport Data
   const [transportData, setTransportData] = useState({
     departureTime: "",
     airportArrivalTime: "",
@@ -34,65 +40,137 @@ const ECMOCalculations = () => {
     destinationHospitalArrivalTime: ""
   });
 
-  const [checklist, setChecklist] = useState([
-    { id: 1, item: "Verificar funcionamiento del oxigenador", checked: false, mandatory: true },
-    { id: 2, item: "Comprobar niveles de anticoagulación", checked: false, mandatory: true },
-    { id: 3, item: "Revisar conexiones de cánulas", checked: false, mandatory: true },
-    { id: 4, item: "Verificar backup de energía", checked: false, mandatory: true },
-    { id: 5, item: "Comprobar alarmas del sistema", checked: false, mandatory: true },
-    { id: 6, item: "Documentación médica completa", checked: false, mandatory: false },
-    { id: 7, item: "Equipo de emergencia disponible", checked: false, mandatory: true }
+  // Calculation Results
+  const [ecmoResults, setEcmoResults] = useState<ECMOCalculationResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Checklist state
+  const [checklist, setChecklist] = useState<ECMOMobileChecklist[]>([
+    { 
+      id: '1', itemId: 'oxygenator', title: 'Verificar funcionamiento del oxigenador', 
+      description: 'Prueba de flujo y presión', isRequired: true, isChecked: false, category: 'Equipamiento' 
+    },
+    { 
+      id: '2', itemId: 'anticoagulation', title: 'Comprobar niveles de anticoagulación', 
+      description: 'ACT o INR', isRequired: true, isChecked: false, category: 'Medicamentos' 
+    },
+    { 
+      id: '3', itemId: 'connections', title: 'Revisar conexiones de cánulas', 
+      description: 'Verificar que no haya fugas', isRequired: true, isChecked: false, category: 'Equipamiento' 
+    },
+    { 
+      id: '4', itemId: 'backup_power', title: 'Verificar backup de energía', 
+      description: 'Batería cargada', isRequired: true, isChecked: false, category: 'Sistema' 
+    },
+    { 
+      id: '5', itemId: 'alarms', title: 'Comprobar alarmas del sistema', 
+      description: 'Volumen y funcionalidad', isRequired: true, isChecked: false, category: 'Sistema' 
+    },
+    { 
+      id: '6', itemId: 'documentation', title: 'Documentación médica completa', 
+      description: 'Consentimiento y registros', isRequired: false, isChecked: false, category: 'Documentación' 
+    },
+    { 
+      id: '7', itemId: 'emergency', title: 'Equipo de emergencia disponible', 
+      description: 'Desfibrilador, medicamentos', isRequired: true, isChecked: false, category: 'Equipamiento' 
+    }
   ]);
 
-  const calculateECMOFlow = (weight: number, ecmoType: string) => {
-    if (ecmoType === "VV") {
-      return {
-        min: weight * 100,
-        max: weight * 150,
-        unit: "mL/kg/min"
+  // Timeline Events state
+  const [timelineEvents, setTimelineEvents] = useState<ECMOMobileTimelineEvent[]>([]);
+
+  // Función para calcular ECMO usando funciones centralizadas
+  const performECMOCalculations = () => {
+    try {
+      setError(null);
+
+      const weight = parseFloat(patientData.weight);
+      const height = parseFloat(patientData.height);
+      const currentHct = parseFloat(patientData.currentHct);
+
+      if (!weight || !height || !patientData.ecmoType) {
+        setError('Por favor completa los campos requeridos (peso, altura, tipo ECMO)');
+        setEcmoResults(null);
+        return;
+      }
+
+      const input: ECMOCalculationInput = {
+        weight,
+        height,
+        ecmoType: patientData.ecmoType,
+        patientHematocrit: currentHct || 35,
+        primingVolume: 300,
       };
-    } else if (ecmoType === "VA") {
-      return {
-        min: weight * 50,
-        max: weight * 100,
-        unit: "mL/kg/min"
+
+      const results: ECMOCalculationResult = {
+        recommendedFlow: calculations.calculateECMOFlow(weight, height, patientData.ecmoType),
+        hematocritAfterPriming: currentHct 
+          ? calculations.calculateECMOHctDrop(currentHct, 300, weight * 70)
+          : undefined,
+        calculatedAt: new Date(),
       };
+
+      setEcmoResults(results);
+    } catch (err) {
+      setError((err as Error).message);
+      setEcmoResults(null);
     }
-    return null;
   };
 
-  const calculateHematocritDrop = (currentHct: number, weight: number, primingVolume = 300) => {
-    const bloodVolume = weight * 70; // mL/kg approximation
-    const totalVolume = bloodVolume + primingVolume;
-    return (currentHct * bloodVolume) / totalVolume;
+  // Trigger calculations cuando cambian los parámetros
+  const handleWeightChange = (value: string) => {
+    setPatientData({ ...patientData, weight: value });
   };
 
-  const getCalculations = () => {
-    const weight = parseFloat(patientData.weight);
-    const currentHct = parseFloat(patientData.currentHct);
-
-    if (!weight || !patientData.ecmoType) {
-      return null;
-    }
-
-    const flowCalc = calculateECMOFlow(weight, patientData.ecmoType);
-    const hctDrop = currentHct ? calculateHematocritDrop(currentHct, weight) : null;
-
-    return {
-      flow: flowCalc,
-      hematocritDrop: hctDrop
-    };
+  const handleHeightChange = (value: string) => {
+    setPatientData({ ...patientData, height: value });
   };
 
-  const calculations = getCalculations();
+  const handleEcmoTypeChange = (value: string) => {
+    setPatientData({ ...patientData, ecmoType: value as 'VA' | 'VV' | 'VAV' });
+  };
 
-  const handleChecklistChange = (id: number, checked: boolean) => {
+  const handleHctChange = (value: string) => {
+    setPatientData({ ...patientData, currentHct: value });
+  };
+
+  // Actualizar cálculos cuando cambian los inputs
+  const handleCalculateClick = () => {
+    performECMOCalculations();
+  };
+
+  // Checklist handlers
+  const handleChecklistChange = (itemId: string, checked: boolean) => {
     setChecklist(prev => prev.map(item => 
-      item.id === id ? { ...item, checked } : item
+      item.itemId === itemId ? { ...item, isChecked: checked } : item
     ));
   };
 
-  const mandatoryItemsChecked = checklist.filter(item => item.mandatory).every(item => item.checked);
+  // Timeline handlers
+  const recordTimelineEvent = (eventType: ECMOMobileEventType, displayName: string) => {
+    const newEvent: ECMOMobileTimelineEvent = {
+      id: Date.now().toString(),
+      eventType,
+      displayName,
+      scheduledTime: new Date(),
+      actualTime: new Date(),
+      isCompleted: true,
+    };
+    setTimelineEvents([...timelineEvents, newEvent]);
+  };
+
+  const mandatoryItemsChecked = checklist.filter(item => item.isRequired).every(item => item.isChecked);
+  const uncheckedMandatory = checklist.filter(item => item.isRequired && !item.isChecked);
+
+  const timelineEventOptions: { type: ECMOMobileEventType; label: string }[] = [
+    { type: 'hospital_departure', label: 'Salida del Hospital' },
+    { type: 'airport_arrival_origin', label: 'Llegada al Aeropuerto (Origen)' },
+    { type: 'origin_hospital_arrival', label: 'Llegada Hospital Origen' },
+    { type: 'ecmo_start', label: 'Inicio ECMO' },
+    { type: 'origin_hospital_departure', label: 'Salida Hospital Origen' },
+    { type: 'airport_arrival_destination', label: 'Llegada Aeropuerto (Destino)' },
+    { type: 'destination_hospital_arrival', label: 'Llegada Hospital Destino' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -103,6 +181,7 @@ const ECMOCalculations = () => {
           <TabsTrigger value="transport">Transporte Móvil</TabsTrigger>
         </TabsList>
 
+        {/* ==================== CÁLCULOS ECMO ==================== */}
         <TabsContent value="calculations" className="space-y-6">
           {/* Patient Data */}
           <Card>
@@ -116,25 +195,33 @@ const ECMOCalculations = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="weight">Peso (kg) *</Label>
                   <Input
                     id="weight"
                     type="number"
+                    step="0.1"
                     value={patientData.weight}
-                    onChange={(e) => setPatientData({ ...patientData, weight: e.target.value })}
+                    onChange={(e) => handleWeightChange(e.target.value)}
                     placeholder="70"
-                    required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="height">Altura (cm)</Label>
+                  <Label htmlFor="height">Altura (cm) *</Label>
                   <Input
                     id="height"
                     type="number"
+                    step="0.1"
                     value={patientData.height}
-                    onChange={(e) => setPatientData({ ...patientData, height: e.target.value })}
+                    onChange={(e) => handleHeightChange(e.target.value)}
                     placeholder="170"
                   />
                 </div>
@@ -152,13 +239,14 @@ const ECMOCalculations = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="ecmoType">Tipo de ECMO *</Label>
-                  <Select value={patientData.ecmoType} onValueChange={(value) => setPatientData({ ...patientData, ecmoType: value })}>
+                  <Select value={patientData.ecmoType} onValueChange={handleEcmoTypeChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="VV">Veno-Venoso (VV)</SelectItem>
                       <SelectItem value="VA">Veno-Arterial (VA)</SelectItem>
+                      <SelectItem value="VV">Veno-Venoso (VV)</SelectItem>
+                      <SelectItem value="VAV">VA-VV Híbrido</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -167,17 +255,24 @@ const ECMOCalculations = () => {
                   <Input
                     id="currentHct"
                     type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
                     value={patientData.currentHct}
-                    onChange={(e) => setPatientData({ ...patientData, currentHct: e.target.value })}
+                    onChange={(e) => handleHctChange(e.target.value)}
                     placeholder="35"
                   />
                 </div>
               </div>
+
+              <Button onClick={handleCalculateClick} className="w-full">
+                Calcular Parámetros ECMO
+              </Button>
             </CardContent>
           </Card>
 
           {/* Results */}
-          {calculations && (
+          {ecmoResults && (
             <Card>
               <CardHeader>
                 <CardTitle>Resultados de Cálculos ECMO</CardTitle>
@@ -187,39 +282,53 @@ const ECMOCalculations = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {calculations.flow && (
-                    <div className="p-4 border rounded-lg bg-medical-primary-light/30">
-                      <div className="text-sm font-medium text-muted-foreground">
-                        Flujo ECMO {patientData.ecmoType}
-                      </div>
-                      <div className="text-2xl font-bold text-medical-primary">
-                        {calculations.flow.min} - {calculations.flow.max}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {calculations.flow.unit}
-                      </div>
+                  <div className="p-4 border rounded-lg bg-medical-primary-light/30">
+                    <div className="text-sm font-medium text-muted-foreground">
+                      Flujo ECMO {patientData.ecmoType}
                     </div>
-                  )}
+                    <div className="text-2xl font-bold text-medical-primary">
+                      {ecmoResults.recommendedFlow.toFixed(2)} L/min
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      ({(ecmoResults.recommendedFlow * 1000).toFixed(0)} mL/min)
+                    </div>
+                  </div>
                   
-                  {calculations.hematocritDrop && (
+                  {ecmoResults.hematocritAfterPriming !== undefined && (
                     <div className="p-4 border rounded-lg bg-warning/20">
                       <div className="text-sm font-medium text-muted-foreground">
                         Hematocrito Post-Dilución
                       </div>
                       <div className="text-2xl font-bold text-warning">
-                        {calculations.hematocritDrop.toFixed(1)}%
+                        {ecmoResults.hematocritAfterPriming.toFixed(1)}%
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Estimado con cebado 300mL
+                        Con cebado 300mL
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Recomendaciones clínicas */}
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="font-semibold text-blue-900 text-sm mb-2">Recomendaciones:</p>
+                  <ul className="space-y-1 text-blue-800 text-xs">
+                    {patientData.ecmoType === 'VV' && (
+                      <li>✓ ECMO VV: Flujo típico 4-6 L/min</li>
+                    )}
+                    {patientData.ecmoType === 'VA' && (
+                      <li>✓ ECMO VA: Flujo típico 2.5-4.5 L/min</li>
+                    )}
+                    <li>✓ Monitorear ACT cada 2-4 horas</li>
+                    <li>✓ Mantener hematocrito entre 25-35%</li>
+                  </ul>
                 </div>
               </CardContent>
             </Card>
           )}
         </TabsContent>
 
+        {/* ==================== PROTOCOLOS DE CEBADO ==================== */}
         <TabsContent value="priming" className="space-y-6">
           <Card>
             <CardHeader>
@@ -237,28 +346,64 @@ const ECMOCalculations = () => {
                 
                 <TabsContent value="neonatal" className="space-y-4">
                   <div className="bg-medical-primary-light/20 p-4 rounded-lg">
-                    <h4 className="font-semibold mb-2">Protocolo de Cebado Neonatal</h4>
+                    <h4 className="font-semibold mb-3">Protocolo de Cebado Neonatal</h4>
                     <ol className="space-y-2 text-sm">
-                      <li>1. Preparar solución cristaloide (250-300 mL)</li>
-                      <li>2. Agregar albúmina al 5% (25-50 mL)</li>
-                      <li>3. Heparina: 50-100 UI/kg</li>
-                      <li>4. Bicarbonato de sodio: 1-2 mEq/kg</li>
-                      <li>5. Cloruro de calcio: 5-10 mg/kg</li>
-                      <li>6. Verificar pH objetivo: 7.35-7.45</li>
+                      <li className="flex gap-3">
+                        <span className="font-bold text-medical-primary min-w-fit">1.</span>
+                        <span>Preparar solución cristaloide (250-300 mL)</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="font-bold text-medical-primary min-w-fit">2.</span>
+                        <span>Agregar albúmina al 5% (25-50 mL)</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="font-bold text-medical-primary min-w-fit">3.</span>
+                        <span>Heparina: 50-100 UI/kg</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="font-bold text-medical-primary min-w-fit">4.</span>
+                        <span>Bicarbonato de sodio: 1-2 mEq/kg</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="font-bold text-medical-primary min-w-fit">5.</span>
+                        <span>Cloruro de calcio: 5-10 mg/kg</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="font-bold text-medical-primary min-w-fit">6.</span>
+                        <span>Verificar pH objetivo: 7.35-7.45</span>
+                      </li>
                     </ol>
                   </div>
                 </TabsContent>
                 
                 <TabsContent value="pediatric" className="space-y-4">
                   <div className="bg-medical-primary-light/20 p-4 rounded-lg">
-                    <h4 className="font-semibold mb-2">Protocolo de Cebado Pediátrico</h4>
+                    <h4 className="font-semibold mb-3">Protocolo de Cebado Pediátrico</h4>
                     <ol className="space-y-2 text-sm">
-                      <li>1. Solución cristaloide: 500-800 mL (según peso)</li>
-                      <li>2. Concentrado de glóbulos rojos si Hct {"<"} 25%</li>
-                      <li>3. Heparina: 50-100 UI/kg</li>
-                      <li>4. Manitol: 0.5-1 g/kg</li>
-                      <li>5. Corticosteroides según protocolo</li>
-                      <li>6. Verificar ACT {">"} 400 segundos</li>
+                      <li className="flex gap-3">
+                        <span className="font-bold text-medical-primary min-w-fit">1.</span>
+                        <span>Solución cristaloide: 500-800 mL (según peso)</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="font-bold text-medical-primary min-w-fit">2.</span>
+                        <span>Concentrado de glóbulos rojos si Hct {'<'} 25%</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="font-bold text-medical-primary min-w-fit">3.</span>
+                        <span>Heparina: 50-100 UI/kg</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="font-bold text-medical-primary min-w-fit">4.</span>
+                        <span>Manitol: 0.5-1 g/kg</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="font-bold text-medical-primary min-w-fit">5.</span>
+                        <span>Corticosteroides según protocolo</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="font-bold text-medical-primary min-w-fit">6.</span>
+                        <span>Verificar ACT {'>'} 400 segundos</span>
+                      </li>
                     </ol>
                   </div>
                 </TabsContent>
@@ -267,6 +412,7 @@ const ECMOCalculations = () => {
           </Card>
         </TabsContent>
 
+        {/* ==================== TRANSPORTE MÓVIL ==================== */}
         <TabsContent value="transport" className="space-y-6">
           {/* Patient Registration */}
           <Card>
@@ -312,32 +458,53 @@ const ECMOCalculations = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {checklist.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-3">
-                    <Checkbox
-                      id={`checklist-${item.id}`}
-                      checked={item.checked}
-                      onCheckedChange={(checked) => handleChecklistChange(item.id, !!checked)}
-                    />
-                    <Label
-                      htmlFor={`checklist-${item.id}`}
-                      className={`flex-1 ${item.mandatory ? 'font-medium' : ''}`}
-                    >
-                      {item.item}
-                      {item.mandatory && <span className="text-destructive ml-1">*</span>}
-                    </Label>
+              <div className="space-y-4">
+                {/* Agrupar por categoría */}
+                {['Equipamiento', 'Medicamentos', 'Documentación', 'Sistema'].map(category => (
+                  <div key={category}>
+                    <h4 className="font-semibold text-sm mb-2 text-gray-700">{category}</h4>
+                    <div className="space-y-3 ml-2">
+                      {checklist
+                        .filter(item => item.category === category)
+                        .map((item) => (
+                          <div key={item.itemId} className="flex items-start space-x-3">
+                            <Checkbox
+                              id={`checklist-${item.itemId}`}
+                              checked={item.isChecked}
+                              onCheckedChange={(checked) => handleChecklistChange(item.itemId, !!checked)}
+                              className="mt-1"
+                            />
+                            <div className="flex-1">
+                              <Label
+                                htmlFor={`checklist-${item.itemId}`}
+                                className={`cursor-pointer ${item.isRequired ? 'font-medium' : ''}`}
+                              >
+                                {item.title}
+                                {item.isRequired && <span className="text-destructive ml-1">*</span>}
+                              </Label>
+                              {item.description && (
+                                <p className="text-xs text-gray-600 mt-1">{item.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 ))}
               </div>
               
               {!mandatoryItemsChecked && (
                 <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <div className="flex items-center gap-2 text-destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span className="text-sm font-medium">
-                      Ítems obligatorios pendientes
-                    </span>
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                    <div className="text-destructive text-sm">
+                      <p className="font-medium">⚠️ Ítems obligatorios pendientes:</p>
+                      <ul className="list-disc pl-5 mt-1 space-y-1">
+                        {uncheckedMandatory.map(item => (
+                          <li key={item.itemId} className="text-xs">{item.title}</li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 </div>
               )}
@@ -356,44 +523,53 @@ const ECMOCalculations = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="departureTime">Salida del Hospital</Label>
-                  <Input
-                    id="departureTime"
-                    type="datetime-local"
-                    value={transportData.departureTime}
-                    onChange={(e) => setTransportData({ ...transportData, departureTime: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="airportArrivalTime">Llegada al Aeropuerto</Label>
-                  <Input
-                    id="airportArrivalTime"
-                    type="datetime-local"
-                    value={transportData.airportArrivalTime}
-                    onChange={(e) => setTransportData({ ...transportData, airportArrivalTime: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="originHospitalArrivalTime">Llegada Hospital Origen</Label>
-                  <Input
-                    id="originHospitalArrivalTime"
-                    type="datetime-local"
-                    value={transportData.originHospitalArrivalTime}
-                    onChange={(e) => setTransportData({ ...transportData, originHospitalArrivalTime: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ecmoInitiationTime">Inicio ECMO</Label>
-                  <Input
-                    id="ecmoInitiationTime"
-                    type="datetime-local"
-                    value={transportData.ecmoInitiationTime}
-                    onChange={(e) => setTransportData({ ...transportData, ecmoInitiationTime: e.target.value })}
-                  />
-                </div>
+              {/* Botones para registrar eventos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+                {timelineEventOptions.map(({ type, label }) => {
+                  const isRecorded = timelineEvents.some(e => e.eventType === type);
+                  return (
+                    <Button
+                      key={type}
+                      onClick={() => recordTimelineEvent(type, label)}
+                      disabled={isRecorded}
+                      variant={isRecorded ? 'outline' : 'default'}
+                      size="sm"
+                      className="justify-start text-left"
+                    >
+                      {isRecorded ? '✓' : '+'} {label}
+                    </Button>
+                  );
+                })}
               </div>
+
+              {/* Timeline de eventos registrados */}
+              {timelineEvents.length > 0 && (
+                <div className="mt-4 pt-4 border-t">
+                  <h4 className="font-semibold text-sm mb-3">Eventos Registrados</h4>
+                  <div className="space-y-2">
+                    {timelineEvents.map((event, index) => (
+                      <div key={event.id} className="p-3 bg-gray-50 rounded-lg border">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-sm">{event.displayName}</p>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {event.actualTime?.toLocaleString('es-CL')}
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => setTimelineEvents(timelineEvents.filter(e => e.id !== event.id))}
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            Eliminar
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

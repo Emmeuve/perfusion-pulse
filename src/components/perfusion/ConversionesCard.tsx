@@ -1,249 +1,286 @@
-import React, { useMemo, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertCircle, Copy } from 'lucide-react';
+import type { ConversionType, ConversionResult } from '@/types';
 
-/**
- * ConversionesCard
- *
- * Incluye:
- * - mg ↔ µg
- * - cm ↔ pulgadas
- * - pulgadas ↔ French (Fr) (recordar: 1 Fr = 1/3 mm; 1 in = 25.4 mm)
- * - mEq ↔ mg (requiere Peso Molecular (PM) y valencia (z)): mg = mEq * (PM / z)
- */
-export default function ConversionesCard() {
-  return (
-    <Card className="w-full max-w-5xl mx-auto shadow-xl border rounded-2xl">
-      <CardHeader>
-        <CardTitle>Conversiones</CardTitle>
-        <CardDescription>Equivalencias rápidas usadas en perfusión y clínica.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-6 md:grid-cols-2">
-        <SeccionMgUg />
-        <SeccionCmIn />
-        <SeccionInFr />
-        <SeccionMEqMg />
-      </CardContent>
-    </Card>
-  );
-}
+const ConversionesCard = () => {
+  const [selectedConversion, setSelectedConversion] = useState<ConversionType>('mg_to_ug');
+  const [inputValue, setInputValue] = useState<string>('');
+  const [result, setResult] = useState<ConversionResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-12 items-center gap-3">
-      <Label className="col-span-5 md:col-span-4 text-sm text-muted-foreground">{label}</Label>
-      <div className="col-span-7 md:col-span-8 flex gap-2">{children}</div>
-    </div>
-  );
-}
+  // Definir conversiones disponibles
+  const conversions: {
+    type: ConversionType;
+    label: string;
+    description: string;
+  }[] = [
+    { type: 'mg_to_ug', label: 'mg → μg', description: 'Miligramos a Microgramos' },
+    { type: 'ug_to_mg', label: 'μg → mg', description: 'Microgramos a Miligramos' },
+    { type: 'inch_to_fr', label: 'Pulgadas → Fr', description: 'Pulgadas a French' },
+    { type: 'fr_to_inch', label: 'Fr → Pulgadas', description: 'French a Pulgadas' },
+    { type: 'meq_to_mg', label: 'mEq → mg', description: 'Miliequivalentes a Miligramos' },
+    { type: 'mg_to_meq', label: 'mg → mEq', description: 'Miligramos a Miliequivalentes' },
+    { type: 'cm_to_inch', label: 'cm → Pulgadas', description: 'Centímetros a Pulgadas' },
+    { type: 'inch_to_cm', label: 'Pulgadas → cm', description: 'Pulgadas a Centímetros' },
+    { type: 'kg_to_lb', label: 'kg → lb', description: 'Kilogramos a Libras' },
+    { type: 'lb_to_kg', label: 'lb → kg', description: 'Libras a Kilogramos' },
+  ];
 
-/**********************  mg ↔ µg  *************************/
-function SeccionMgUg() {
-  const [dir, setDir] = useState<"mgToUg" | "ugToMg">("mgToUg");
-  const [valor, setValor] = useState<string>("");
+  // Función para realizar conversiones
+  const performConversion = () => {
+    try {
+      setError(null);
 
-  const resultado = useMemo(() => {
-    const v = parseFloat(valor);
-    if (Number.isNaN(v)) return "";
-    return dir === "mgToUg" ? (v * 1000).toString() : (v / 1000).toString();
-  }, [dir, valor]);
+      const value = parseFloat(inputValue);
+      if (isNaN(value) || value < 0) {
+        setError('Por favor ingresa un número válido y positivo');
+        setResult(null);
+        return;
+      }
 
-  return (
-    <div className="p-4 rounded-xl border bg-card">
-      <h3 className="font-semibold mb-1">mg ↔ µg</h3>
-      <p className="text-xs text-muted-foreground mb-4">1 mg = 1000 µg</p>
-      <div className="space-y-3">
-        <Row label="Dirección">
-          <Select value={dir} onValueChange={(v) => setDir(v as any)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Selecciona" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="mgToUg">mg → µg</SelectItem>
-              <SelectItem value="ugToMg">µg → mg</SelectItem>
-            </SelectContent>
-          </Select>
-        </Row>
-        <Row label={dir === "mgToUg" ? "Valor en mg" : "Valor en µg"}>
-          <Input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0" />
-          <Button type="button" variant="secondary" onClick={() => setValor("")}>Limpiar</Button>
-        </Row>
-        <Row label="Resultado">
-          <Input readOnly value={resultado} placeholder="—" />
-          <Unidad tag={dir === "mgToUg" ? "µg" : "mg"} />
-        </Row>
-      </div>
-    </div>
-  );
-}
+      let converted: number;
+      let originalUnit: string;
+      let convertedUnit: string;
 
-/**********************  cm ↔ in  *************************/
-function SeccionCmIn() {
-  const [dir, setDir] = useState<"cmToIn" | "inToCm">("cmToIn");
-  const [valor, setValor] = useState<string>("");
+      switch (selectedConversion) {
+        // Masa: mg ↔ μg
+        case 'mg_to_ug':
+          converted = value * 1000;
+          originalUnit = 'mg';
+          convertedUnit = 'μg';
+          break;
+        case 'ug_to_mg':
+          converted = value / 1000;
+          originalUnit = 'μg';
+          convertedUnit = 'mg';
+          break;
 
-  const resultado = useMemo(() => {
-    const v = parseFloat(valor);
-    if (Number.isNaN(v)) return "";
-    return dir === "cmToIn" ? (v / 2.54).toFixed(4) : (v * 2.54).toFixed(2);
-  }, [dir, valor]);
+        // Calibre: Pulgadas ↔ Fr (French)
+        case 'inch_to_fr':
+          converted = value * 3;
+          originalUnit = 'Pulgadas';
+          convertedUnit = 'Fr';
+          break;
+        case 'fr_to_inch':
+          converted = value / 3;
+          originalUnit = 'Fr';
+          convertedUnit = 'Pulgadas';
+          break;
 
-  return (
-    <div className="p-4 rounded-xl border bg-card">
-      <h3 className="font-semibold mb-1">cm ↔ pulgadas</h3>
-      <p className="text-xs text-muted-foreground mb-4">1 in = 2.54 cm</p>
-      <div className="space-y-3">
-        <Row label="Dirección">
-          <Select value={dir} onValueChange={(v) => setDir(v as any)}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="cmToIn">cm → in</SelectItem>
-              <SelectItem value="inToCm">in → cm</SelectItem>
-            </SelectContent>
-          </Select>
-        </Row>
-        <Row label={dir === "cmToIn" ? "Valor en cm" : "Valor en in"}>
-          <Input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0" />
-          <Button type="button" variant="secondary" onClick={() => setValor("")}>Limpiar</Button>
-        </Row>
-        <Row label="Resultado">
-          <Input readOnly value={resultado} placeholder="—" />
-          <Unidad tag={dir === "cmToIn" ? "in" : "cm"} />
-        </Row>
-      </div>
-    </div>
-  );
-}
+        // Electrolitos: mEq ↔ mg (para sodio)
+        case 'meq_to_mg':
+          converted = value * 23; // Peso molecular del sodio
+          originalUnit = 'mEq';
+          convertedUnit = 'mg (Na)';
+          break;
+        case 'mg_to_meq':
+          converted = value / 23;
+          originalUnit = 'mg (Na)';
+          convertedUnit = 'mEq';
+          break;
 
-/**********************  in ↔ Fr  *************************/
-function SeccionInFr() {
-  const [dir, setDir] = useState<"inToFr" | "frToIn">("inToFr");
-  const [valor, setValor] = useState<string>("");
+        // Longitud: cm ↔ Pulgadas
+        case 'cm_to_inch':
+          converted = value / 2.54;
+          originalUnit = 'cm';
+          convertedUnit = 'Pulgadas';
+          break;
+        case 'inch_to_cm':
+          converted = value * 2.54;
+          originalUnit = 'Pulgadas';
+          convertedUnit = 'cm';
+          break;
 
-  const resultado = useMemo(() => {
-    const v = parseFloat(valor);
-    if (Number.isNaN(v)) return "";
-    if (dir === "inToFr") {
-      // in -> mm -> Fr (1 in = 25.4 mm; 1 Fr = 1/3 mm => Fr = mm * 3)
-      const mm = v * 25.4;
-      const fr = mm * 3;
-      return fr.toFixed(2);
-    } else {
-      // Fr -> mm -> in
-      const mm = v / 3;
-      const inches = mm / 25.4;
-      return inches.toFixed(4);
+        // Peso: kg ↔ lb
+        case 'kg_to_lb':
+          converted = value * 2.20462;
+          originalUnit = 'kg';
+          convertedUnit = 'lb';
+          break;
+        case 'lb_to_kg':
+          converted = value / 2.20462;
+          originalUnit = 'lb';
+          convertedUnit = 'kg';
+          break;
+
+        default:
+          setError('Conversión no disponible');
+          return;
+      }
+
+      setResult({
+        original: value,
+        converted: parseFloat(converted.toFixed(4)),
+        originalUnit,
+        convertedUnit,
+      });
+    } catch (err) {
+      setError((err as Error).message);
+      setResult(null);
     }
-  }, [dir, valor]);
+  };
 
-  return (
-    <div className="p-4 rounded-xl border bg-card">
-      <h3 className="font-semibold mb-1">pulgadas ↔ French (Fr)</h3>
-      <p className="text-xs text-muted-foreground mb-4">1 Fr = 1/3 mm • 1 in = 25.4 mm</p>
-      <div className="space-y-3">
-        <Row label="Dirección">
-          <Select value={dir} onValueChange={(v) => setDir(v as any)}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="inToFr">in → Fr</SelectItem>
-              <SelectItem value="frToIn">Fr → in</SelectItem>
-            </SelectContent>
-          </Select>
-        </Row>
-        <Row label={dir === "inToFr" ? "Valor en pulgadas (in)" : "Valor en French (Fr)"}>
-          <Input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0" />
-          <Button type="button" variant="secondary" onClick={() => setValor("")}>Limpiar</Button>
-        </Row>
-        <Row label="Resultado">
-          <Input readOnly value={resultado} placeholder="—" />
-          <Unidad tag={dir === "inToFr" ? "Fr" : "in"} />
-        </Row>
-      </div>
-    </div>
-  );
-}
-
-/**********************  mEq ↔ mg  *************************/
-function SeccionMEqMg() {
-  const [dir, setDir] = useState<"meqToMg" | "mgToMeq">("meqToMg");
-  const [valor, setValor] = useState<string>("");
-  const [pm, setPm] = useState<string>(""); // Peso Molecular (g/mol)
-  const [z, setZ] = useState<string>("1"); // Valencia
-
-  const resultado = useMemo(() => {
-    const v = parseFloat(valor);
-    const pmNum = parseFloat(pm);
-    const zNum = parseFloat(z);
-    if ([v, pmNum, zNum].some((n) => Number.isNaN(n) || n <= 0)) return "";
-
-    // Fórmulas:
-    // mg = mEq * (PM / z)
-    // mEq = mg * (z / PM)
-    if (dir === "meqToMg") {
-      const mg = v * (pmNum / zNum);
-      return mg.toFixed(2);
-    } else {
-      const meq = v * (zNum / pmNum);
-      return meq.toFixed(3);
+  const handleCopy = () => {
+    if (result) {
+      const text = `${result.original} ${result.originalUnit} = ${result.converted} ${result.convertedUnit}`;
+      navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
-  }, [dir, valor, pm, z]);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      performConversion();
+    }
+  };
+
+  const getCurrentConversionLabel = () => {
+    return conversions.find(c => c.type === selectedConversion)?.description || '';
+  };
 
   return (
-    <div className="p-4 rounded-xl border bg-card">
-      <h3 className="font-semibold mb-1">mEq ↔ mg</h3>
-      <p className="text-xs text-muted-foreground mb-4">Requiere Peso Molecular (PM) y valencia (z).</p>
-      <div className="space-y-3">
-        <Row label="Dirección">
-          <Select value={dir} onValueChange={(v) => setDir(v as any)}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="meqToMg">mEq → mg</SelectItem>
-              <SelectItem value="mgToMeq">mg → mEq</SelectItem>
-            </SelectContent>
-          </Select>
-        </Row>
-        <Row label="Valor">
-          <Input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0" />
-          <Unidad tag={dir === "meqToMg" ? "mEq" : "mg"} />
-        </Row>
-        <Row label="Peso Molecular (PM)">
-          <Input inputMode="decimal" value={pm} onChange={(e) => setPm(e.target.value)} placeholder="Ej: NaCl 58.44" />
-          <Unidad tag="g/mol" />
-        </Row>
-        <Row label="Valencia (z)">
-          <Input inputMode="decimal" value={z} onChange={(e) => setZ(e.target.value)} placeholder="Ej: 1" />
-          <Unidad tag="z" />
-        </Row>
-        <Row label="Resultado">
-          <Input readOnly value={resultado} placeholder="—" />
-          <Unidad tag={dir === "meqToMg" ? "mg" : "mEq"} />
-        </Row>
-      </div>
-      <TipsMEq />
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">🔄 Conversiones Médicas</CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
+            Herramienta rápida para conversiones comunes en perfusión cardiovascular
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Selector de Conversión */}
+          <div className="space-y-3">
+            <Label htmlFor="conversion-select">Tipo de Conversión</Label>
+            <Select value={selectedConversion} onValueChange={(value) => setSelectedConversion(value as ConversionType)}>
+              <SelectTrigger id="conversion-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <div className="px-2 py-1.5">
+                  <p className="text-xs font-semibold text-gray-600 mb-2">MASA</p>
+                </div>
+                <SelectItem value="mg_to_ug">mg → μg (Miligramos a Microgramos)</SelectItem>
+                <SelectItem value="ug_to_mg">μg → mg (Microgramos a Miligramos)</SelectItem>
+
+                <div className="px-2 py-1.5 border-t mt-2">
+                  <p className="text-xs font-semibold text-gray-600 mb-2">CALIBRE</p>
+                </div>
+                <SelectItem value="inch_to_fr">Pulgadas → Fr</SelectItem>
+                <SelectItem value="fr_to_inch">Fr → Pulgadas</SelectItem>
+
+                <div className="px-2 py-1.5 border-t mt-2">
+                  <p className="text-xs font-semibold text-gray-600 mb-2">ELECTROLITOS</p>
+                </div>
+                <SelectItem value="meq_to_mg">mEq → mg (Sodio)</SelectItem>
+                <SelectItem value="mg_to_meq">mg → mEq (Sodio)</SelectItem>
+
+                <div className="px-2 py-1.5 border-t mt-2">
+                  <p className="text-xs font-semibold text-gray-600 mb-2">LONGITUD</p>
+                </div>
+                <SelectItem value="cm_to_inch">cm → Pulgadas</SelectItem>
+                <SelectItem value="inch_to_cm">Pulgadas → cm</SelectItem>
+
+                <div className="px-2 py-1.5 border-t mt-2">
+                  <p className="text-xs font-semibold text-gray-600 mb-2">PESO</p>
+                </div>
+                <SelectItem value="kg_to_lb">kg → lb</SelectItem>
+                <SelectItem value="lb_to_kg">lb → kg</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-gray-600">{getCurrentConversionLabel()}</p>
+          </div>
+
+          {/* Error Alert */}
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
+          {/* Input de Valor */}
+          <div className="space-y-2">
+            <Label htmlFor="input-value">Valor a Convertir</Label>
+            <div className="flex gap-2">
+              <Input
+                id="input-value"
+                type="number"
+                step="any"
+                min="0"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Ingresa el valor"
+                className="flex-1"
+              />
+              <Button onClick={performConversion}>Convertir</Button>
+            </div>
+          </div>
+
+          {/* Resultado */}
+          {result && (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Resultado</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-3xl font-bold text-green-700">
+                      {result.converted}
+                    </p>
+                    <p className="text-lg text-green-700">{result.convertedUnit}</p>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2">
+                    desde {result.original} {result.originalUnit}
+                  </p>
+                </div>
+                <Button
+                  onClick={handleCopy}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Copy className="h-4 w-4" />
+                  {copied ? 'Copiado' : 'Copiar'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Tabla de Referencia Rápida */}
+          <div className="mt-6 pt-6 border-t space-y-3">
+            <h3 className="font-semibold text-sm">📋 Conversiones Comunes de Referencia</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="p-2 bg-gray-50 rounded">
+                <p className="font-medium">1 mg = 1000 μg</p>
+              </div>
+              <div className="p-2 bg-gray-50 rounded">
+                <p className="font-medium">1 Fr = 0.33 pulgadas</p>
+              </div>
+              <div className="p-2 bg-gray-50 rounded">
+                <p className="font-medium">1 pulgada = 2.54 cm</p>
+              </div>
+              <div className="p-2 bg-gray-50 rounded">
+                <p className="font-medium">1 kg = 2.20462 lb</p>
+              </div>
+              <div className="p-2 bg-gray-50 rounded">
+                <p className="font-medium">1 mEq Na = 23 mg</p>
+              </div>
+              <div className="p-2 bg-gray-50 rounded">
+                <p className="font-medium">1 mEq K = 39 mg</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
-}
+};
 
-function Unidad({ tag }: { tag: string }) {
-  return (
-    <span className="inline-flex items-center px-2 py-1 rounded-lg border text-xs text-muted-foreground bg-background min-w-[48px] justify-center">
-      {tag}
-    </span>
-  );
-}
-
-function TipsMEq() {
-  return (
-    <div className="mt-4 text-xs text-muted-foreground space-y-1">
-      <p className="font-medium text-foreground">Notas rápidas:</p>
-      <ul className="list-disc pl-5 space-y-1">
-        <li>Para NaCl: PM ≈ 58.44 g/mol; para KCl: PM ≈ 74.55 g/mol.</li>
-        <li>Valencia típica: Na⁺, K⁺, Cl⁻ → z = 1; Ca²⁺, Mg²⁺ → z = 2.</li>
-        <li>Ej.: 10 mEq de KCl → mg = 10 × (74.55 / 1) ≈ 745.5 mg.</li>
-      </ul>
-    </div>
-  );
-}
+export default ConversionesCard;
