@@ -485,4 +485,11 @@ const MedicationsDosageCard = () => {
   );
 };
 
-export default MedicationsDosageCard;
+export default function TestComponent() {
+  return (
+    <div style={{ padding: '20px', backgroundColor: '#f0f0f0', color: '#000' }}>
+      <h1>TEST - Si ves esto, funciona</h1>
+      <p>El componente se renderiza correctamente</p>
+    </div>
+  );
+}
