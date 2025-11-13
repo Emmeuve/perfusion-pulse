@@ -512,7 +512,7 @@ const NormalValuesCard = () => {
                   <li>• VA: 2.5-4.5 L/min</li>
                   <li>• VV: 4-6 L/min</li>
                   <li>• Hematocrito: 25-35%</li>
-                  <li>• ACT: > 400 seg</li>
+                  <li>• ACT: &gt; 400 seg</li>
                 </ul>
               </div>
               <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
