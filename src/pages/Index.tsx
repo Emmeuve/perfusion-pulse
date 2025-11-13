@@ -62,7 +62,7 @@ const Index = () => {
       description: "Rangos de referencia específicos por edad",
       icon: BarChart3,
       color: "medical-primary",
-      component: false
+      component: true
     },
     {
       id: 6,
