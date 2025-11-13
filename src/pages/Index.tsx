@@ -140,7 +140,11 @@ const Index = () => {
               <h1 className="text-3xl font-bold text-foreground mb-2">{card.title}</h1>
               <p className="text-muted-foreground">{card.description}</p>
             </div>
-            <Component selectedPatient={selectedPatient} />
+            {card.requiresPatient ? (
+               <Component selectedPatient={selectedPatient} />
+                ) : (
+               <Component />
+              )}
           </div>
         </div>
       );
