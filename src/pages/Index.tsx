@@ -54,7 +54,7 @@ const Index = () => {
       icon: FlaskConical,
       color: "medical-primary",
       component: CorreccionELPCard,
-      requiresPatient: false
+      requiresPatient: true
     },
     {
       id: 5,
@@ -70,7 +70,7 @@ const Index = () => {
       description: "Dosificación de medicamentos relevantes en perfusión",
       icon: Droplet,
       color: "medical-primary",
-      component: false
+      component: true
     },
     {
     id: 7,
@@ -78,7 +78,7 @@ const Index = () => {
     description: "Equivalencias mg↔µg, cm↔in, in↔Fr, mEq↔mg.",
     icon: Calculator,
     component: ConversionesCard,   // 👈 esto habilita el botón y permite montarlo al hacer click
-    requiresPatient: false
+    requiresPatient: true
     },
     {
       id: 8,
@@ -86,7 +86,7 @@ const Index = () => {
       description: "Parámetros hemodinámicos y cardiovasculares de referencia",
       icon: Heart,
       color: "medical-primary",
-      component: false
+      component: true
     },
     {
       id: 9,
