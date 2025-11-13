@@ -11,6 +11,9 @@ import ConversionesCard from "@/components/perfusion/ConversionesCard";
 import SolucionesCard from "@/components/perfusion/SolucionesCard";
 import CorreccionELPCard from "@/components/perfusion/CorreccionELPCard";
 import SupabasePing from "../components/perfusion/SupabasePing";
+import MedicationsDosageCard from "@/components/perfusion/MedicationsDosageCard";
+import HemodynamicValuesCard from "@/components/perfusion/HemodynamicValuesCard";
+import NormalValuesCard from "@/components/perfusion/NormalValuesCard";
 
 const Index = () => {
   const [activeCard, setActiveCard] = useState<number | null>(null);
@@ -59,7 +62,7 @@ const Index = () => {
       description: "Rangos de referencia específicos por edad",
       icon: BarChart3,
       color: "medical-primary",
-      component: null
+      component: false
     },
     {
       id: 6,
@@ -67,7 +70,7 @@ const Index = () => {
       description: "Dosificación de medicamentos relevantes en perfusión",
       icon: Droplet,
       color: "medical-primary",
-      component: null
+      component: false
     },
     {
     id: 7,
@@ -83,7 +86,7 @@ const Index = () => {
       description: "Parámetros hemodinámicos y cardiovasculares de referencia",
       icon: Heart,
       color: "medical-primary",
-      component: null
+      component: false
     },
     {
       id: 9,
