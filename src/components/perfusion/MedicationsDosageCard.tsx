@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Search, Pill, AlertCircle, Calculator } from 'lucide-react';
 
@@ -165,7 +164,7 @@ const MedicationsDosageCard = () => {
       route: 'IV infusión',
       indications: ['Crisis hipertensiva', 'Vasoespasmo', 'Afterload reduction'],
       contraindications: ['Insuficiencia renal severa'],
-      sideEffects: ['Hipotensión', 'Toxicidad por tiocianato (>48h)', 'Cefalea'],
+      sideEffects: ['Hipotensión', 'Toxicidad por tiocianato (&gt;48h)', 'Cefalea'],
       notes: 'Vasodilatador potente y rápido. Proteger de luz. Monitoreo de tiocianato.',
     },
     {
@@ -485,11 +484,4 @@ const MedicationsDosageCard = () => {
   );
 };
 
-export default function TestComponent() {
-  return (
-    <div style={{ padding: '20px', backgroundColor: '#f0f0f0', color: '#000' }}>
-      <h1>TEST - Si ves esto, funciona</h1>
-      <p>El componente se renderiza correctamente</p>
-    </div>
-  );
-}
+export default MedicationsDosageCard;
