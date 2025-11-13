@@ -45,7 +45,8 @@ const Index = () => {
       description: "Cálculos de flujo ECMO, protocolos de cebado y transporte móvil",
       icon: Stethoscope,
       color: "medical-primary",
-      component: ECMOCalculations
+      component: ECMOCalculations,
+      requiresPatient: false
     },
     {
       id: 4,
@@ -54,7 +55,7 @@ const Index = () => {
       icon: FlaskConical,
       color: "medical-primary",
       component: CorreccionELPCard,
-      requiresPatient: true
+      requiresPatient: false
     },
     {
       id: 5,
@@ -62,7 +63,8 @@ const Index = () => {
       description: "Rangos de referencia específicos por edad",
       icon: BarChart3,
       color: "medical-primary",
-      component: true
+      component: NormalValuesCard,
+      requiresPatient: false
     },
     {
       id: 6,
@@ -70,15 +72,16 @@ const Index = () => {
       description: "Dosificación de medicamentos relevantes en perfusión",
       icon: Droplet,
       color: "medical-primary",
-      component: true
+      component: MedicationsDosageCard,
+      requiresPatient: false
     },
     {
-    id: 7,
-    title: "Conversiones",
-    description: "Equivalencias mg↔µg, cm↔in, in↔Fr, mEq↔mg.",
-    icon: Calculator,
-    component: ConversionesCard,   // 👈 esto habilita el botón y permite montarlo al hacer click
-    requiresPatient: true
+      id: 7,
+      title: "Conversiones",
+      description: "Equivalencias mg↔µg, cm↔in, in↔Fr, mEq↔mg.",
+      icon: Calculator,
+      component: ConversionesCard,
+      requiresPatient: false
     },
     {
       id: 8,
@@ -86,7 +89,8 @@ const Index = () => {
       description: "Parámetros hemodinámicos y cardiovasculares de referencia",
       icon: Heart,
       color: "medical-primary",
-      component: true
+      component: HemodynamicValuesCard,
+      requiresPatient: false
     },
     {
       id: 9,
@@ -141,15 +145,16 @@ const Index = () => {
               <p className="text-muted-foreground">{card.description}</p>
             </div>
             {card.requiresPatient ? (
-               <Component selectedPatient={selectedPatient} />
-                ) : (
-               <Component />
-              )}
+              <Component selectedPatient={selectedPatient} />
+            ) : (
+              <Component />
+            )}
           </div>
         </div>
       );
     }
   }
+  
   // Show patient manager
   if (showPatientManager) {
     return (
